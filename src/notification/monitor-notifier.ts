@@ -17,11 +17,17 @@ function formatTimestamp(ts: number): string {
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 }
 
-export class MonitorNotifier {
-  private sock: WASocket;
+export type SocketProvider = () => WASocket | null;
 
-  constructor(sock: WASocket) {
-    this.sock = sock;
+export class MonitorNotifier {
+  private getSocket: SocketProvider;
+
+  constructor(sockOrProvider: WASocket | SocketProvider) {
+    if (typeof sockOrProvider === "function") {
+      this.getSocket = sockOrProvider;
+    } else {
+      this.getSocket = () => sockOrProvider;
+    }
   }
 
   async sendDeletedMessage(record: MessageRecord): Promise<void> {
@@ -32,6 +38,11 @@ export class MonitorNotifier {
         "MONITOR_CHAT_ID not configured, notification skipped"
       );
       return;
+    }
+
+    const sock = this.getSocket();
+    if (!sock) {
+      throw new Error("WhatsApp socket is not connected; cannot send notification");
     }
 
     const isGroup = record.chat_id.endsWith("@g.us");
@@ -54,7 +65,7 @@ export class MonitorNotifier {
         if (record.text_content) {
           caption += `\n\n💬 ${record.text_content}`;
         }
-        await this.sock.sendMessage(destination, {
+        await sock.sendMessage(destination, {
           image: fs.readFileSync(record.media_path!),
           caption,
         });
@@ -63,7 +74,7 @@ export class MonitorNotifier {
         if (record.text_content) {
           caption += `\n\n💬 ${record.text_content}`;
         }
-        await this.sock.sendMessage(destination, {
+        await sock.sendMessage(destination, {
           video: fs.readFileSync(record.media_path!),
           caption,
         });
@@ -72,7 +83,7 @@ export class MonitorNotifier {
         if (record.text_content) {
           caption += `\n\n💬 ${record.text_content}`;
         }
-        await this.sock.sendMessage(destination, {
+        await sock.sendMessage(destination, {
           document: fs.readFileSync(record.media_path!),
           mimetype: record.media_mime_type || "application/octet-stream",
           fileName: record.media_filename || "document",
@@ -80,15 +91,15 @@ export class MonitorNotifier {
         });
       } else if (record.message_type === "audio" && hasMedia) {
         const textNotice = `🚨 PESAN AUDIO DIHAPUS\n\n${chatLabel}: ${chatDisplayName}\nSender  : ${sender}\nSent    : ${sentTime}\nDeleted : ${deletedTime}`;
-        await this.sock.sendMessage(destination, { text: textNotice });
-        await this.sock.sendMessage(destination, {
+        await sock.sendMessage(destination, { text: textNotice });
+        await sock.sendMessage(destination, {
           audio: fs.readFileSync(record.media_path!),
           mimetype: record.media_mime_type || "audio/ogg; codecs=opus",
         });
       } else if (record.message_type === "sticker" && hasMedia) {
         const textNotice = `🚨 STIKER DIHAPUS\n\n${chatLabel}: ${chatDisplayName}\nSender  : ${sender}\nSent    : ${sentTime}\nDeleted : ${deletedTime}`;
-        await this.sock.sendMessage(destination, { text: textNotice });
-        await this.sock.sendMessage(destination, {
+        await sock.sendMessage(destination, { text: textNotice });
+        await sock.sendMessage(destination, {
           sticker: fs.readFileSync(record.media_path!),
         });
       } else {
@@ -104,7 +115,7 @@ export class MonitorNotifier {
           messageText += `\n\n💬 ${record.text_content}`;
         }
 
-        await this.sock.sendMessage(destination, { text: messageText });
+        await sock.sendMessage(destination, { text: messageText });
       }
 
       logger.info(
@@ -115,6 +126,8 @@ export class MonitorNotifier {
         { error, messageId: record.message_id, destination },
         "Failed to forward deleted message notification"
       );
+      // Rethrow to allow BullMQ to retry if socket was temporarily disconnected
+      throw error;
     }
   }
 }

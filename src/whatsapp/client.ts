@@ -19,12 +19,16 @@ export class WhatsAppClient {
   private sock: WASocket | null = null;
   private repository: MessageRepository;
   private messageHandler: MessageHandler;
-  private queueManager: NotificationQueueManager | null = null;
+  private notifier: MonitorNotifier;
+  private queueManager: NotificationQueueManager;
   private isExplicitStop = false;
 
   constructor(repository: MessageRepository) {
     this.repository = repository;
     this.messageHandler = new MessageHandler(repository);
+    this.notifier = new MonitorNotifier(() => this.sock);
+    this.queueManager = new NotificationQueueManager(this.repository);
+    this.queueManager.startWorker(this.notifier);
   }
 
   async start(): Promise<WASocket> {
@@ -54,14 +58,9 @@ export class WhatsAppClient {
 
     this.sock = sock;
 
-    // Initialize BullMQ Notification Queue & Worker
-    this.queueManager = new NotificationQueueManager(this.repository);
-    const notifier = new MonitorNotifier(sock);
-    this.queueManager.startWorker(notifier);
-
     const revokeHandler = new RevokeHandler(
       this.repository,
-      notifier,
+      this.notifier,
       this.queueManager
     );
 
@@ -157,14 +156,10 @@ export class WhatsAppClient {
   async stop(): Promise<void> {
     this.isExplicitStop = true;
 
-    if (this.queueManager) {
-      try {
-        await this.queueManager.close();
-      } catch (err) {
-        logger.error({ err }, "Error while closing BullMQ queue manager");
-      } finally {
-        this.queueManager = null;
-      }
+    try {
+      await this.queueManager.close();
+    } catch (err) {
+      logger.error({ err }, "Error while closing BullMQ queue manager");
     }
 
     if (this.sock) {
