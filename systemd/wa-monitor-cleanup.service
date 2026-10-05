@@ -1,0 +1,12 @@
+[Unit]
+Description=WhatsApp Deleted Message Monitor Cleanup Job
+After=network.target
+
+[Service]
+Type=oneshot
+User=holiq
+WorkingDirectory=/home/holiq/htdocs/wkeep
+ExecStart=/usr/bin/npm run cleanup
+EnvironmentFile=/home/holiq/htdocs/wkeep/.env
+NoNewPrivileges=true
+PrivateTmp=true

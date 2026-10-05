@@ -1,0 +1,42 @@
+{
+  "name": "wkeep",
+  "version": "1.0.0",
+  "description": "WhatsApp Deleted Message Monitor Bot",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "cleanup": "tsx scripts/cleanup.ts",
+    "test": "vitest run",
+    "lint": "tsc --noEmit"
+  },
+  "keywords": [
+    "whatsapp",
+    "baileys",
+    "sqlite",
+    "monitor"
+  ],
+  "author": "Holiq <me@holiq.id>",
+  "license": "MIT",
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.13",
+    "better-sqlite3": "^11.8.1",
+    "bullmq": "^6.3.11",
+    "dotenv": "^16.4.7",
+    "ioredis": "^6.0.0",
+    "pino": "^9.6.0",
+    "pino-pretty": "^13.0.0",
+    "qrcode-terminal": "^0.12.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^22.13.1",
+    "@types/qrcode-terminal": "^0.12.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
+  }
+}

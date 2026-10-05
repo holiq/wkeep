@@ -1,0 +1,21 @@
+[Unit]
+Description=WhatsApp Deleted Message Monitor (WKeep)
+After=network-online.target redis-server.service redis.service
+Wants=network-online.target redis-server.service redis.service
+
+[Service]
+Type=simple
+# Change user and path according to your system needs
+User=holiq
+WorkingDirectory=/home/holiq/htdocs/wkeep
+ExecStart=/usr/bin/node /home/holiq/htdocs/wkeep/dist/index.js
+Restart=always
+RestartSec=5
+
+EnvironmentFile=/home/holiq/htdocs/wkeep/.env
+
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
